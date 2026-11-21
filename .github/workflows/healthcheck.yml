@@ -1,0 +1,28 @@
+name: healthcheck
+
+on:
+  schedule:
+    - cron: "40 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Published stats are fresh and sane
+        run: |
+          url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/subscriptions/stats.json"
+          curl -fsSL --retry 3 "$url" -o stats.json
+          python3 - <<'EOF'
+          import json, sys
+          from datetime import datetime, timezone
+          d = json.load(open("stats.json"))
+          age = (datetime.now(timezone.utc) - datetime.fromisoformat(d["updated"])).total_seconds() / 3600
+          print("age_hours", round(age, 1), "alive", d["alive"])
+          if age > 30 or d["alive"] < 5:
+              sys.exit("stale or too few servers")
+          EOF
