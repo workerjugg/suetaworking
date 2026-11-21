@@ -1,47 +1,155 @@
 {
   "limits": {
-    "max_nodes": 30000, "max_probe": 4000, "workers": 128, "profile_size": 100, "min_alive": 5,
-    "source_delay": 1.0, "ttl_days": 3, "geo_max": 1500, "client_update_hours": 6
+    "max_nodes": 30000,
+    "max_probe": 4000,
+    "workers": 128,
+    "profile_size": 100,
+    "min_alive": 5,
+    "source_delay": 1.0,
+    "ttl_days": 3,
+    "geo_max": 1500,
+    "client_update_hours": 6
   },
-  "tunnel": {"budget": 300, "workers": 8, "speed_top": 30, "max_seconds": 1500},
+  "tunnel": {
+    "budget": 600,
+    "workers": 16,
+    "speed_top": 30,
+    "max_seconds": 1800
+  },
   "sources": [
-    {"name": "igareck-wl-reality-mobile", "tags": ["whitelist"], "type": "url", "trusted": false, "enabled": true,
-     "note": "Для обхода белых списков мобильного интернета РФ. Репозиторий GPL-3.0. Адрес raw выведен из имени файла на странице репозитория.",
-     "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile.txt"},
-    {"name": "igareck-white-cidr-checked", "tags": ["whitelist"], "type": "url", "trusted": false, "enabled": true,
-     "note": "Белые списки по CIDR (проверенные). GPL-3.0.",
-     "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-CIDR-RU-checked.txt"},
-    {"name": "igareck-white-sni-all", "tags": ["whitelist"], "type": "url", "trusted": false, "enabled": true,
-     "note": "Белые списки по SNI. GPL-3.0.",
-     "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-SNI-RU-all.txt"},
-    {"name": "igareck-black-vless", "tags": ["russia-blocks"], "type": "url", "trusted": false, "enabled": true,
-     "note": "Обход обычных блокировок в РФ. GPL-3.0.",
-     "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS.txt"},
-    {"name": "igareck-black-vless-mobile", "tags": ["russia-blocks"], "type": "url", "trusted": false, "enabled": true,
-     "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS_mobile.txt"},
-    {"name": "igareck-black-ss", "tags": ["russia-blocks"], "type": "url", "trusted": false, "enabled": true,
-     "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_SS%2BAll_RUS.txt"},
-    {"name": "rjsxrd-bypass-all", "tags": ["whitelist"], "type": "url", "trusted": false, "enabled": true,
-     "note": "Безопасные (secure) конфиги для обхода SNI/CIDR. MIT; обновляется ежечасно. Страница советует мобильным брать части по 300, но мы всё равно фильтруем сами.",
-     "location": "https://raw.githubusercontent.com/whoahaow/rjsxrd/refs/heads/main/githubmirror/bypass/bypass-all.txt"},
-    {"name": "rjsxrd-default-secure", "tags": ["russia-blocks"], "type": "url", "trusted": false, "enabled": true,
-     "note": "Только secure-конфиги для обычных блокировок. MIT.",
-     "location": "https://raw.githubusercontent.com/whoahaow/rjsxrd/refs/heads/main/githubmirror/default/all-secure.txt"},
-    {"name": "barry-far-all", "type": "url", "trusted": false, "enabled": true,
-     "note": "MIT; обновляется каждые 15 минут. Большой агрегатор.",
-     "location": "https://raw.githubusercontent.com/barry-far/V2ray-config/main/All_Configs_Sub.txt"},
-    {"name": "epodonios-all", "type": "url", "trusted": false, "enabled": true,
-     "note": "Обновляется каждые 5 минут. В репозитории противоречие лицензий (MIT в README, GPL-3.0 в боковой панели).",
-     "location": "https://github.com/Epodonios/v2ray-configs/raw/main/All_Configs_Sub.txt"},
-    {"name": "free-nodes-735754647", "type": "url", "trusted": false, "enabled": true,
-     "note": "MIT.", "location": "https://735754647.github.io/Free-Nodes/v2ray.txt"},
-    {"name": "nexus-nodes-ninjastrikers", "type": "url", "trusted": false, "enabled": true,
-     "note": "MIT. Агрегатор сторонних коллекторов.",
-     "location": "https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/all.txt"},
-    {"name": "kort0881-vless-clean", "type": "url", "trusted": false, "enabled": false,
-     "note": "ВЫКЛЮЧЕН: лицензия противоречива («MIT с ограничениями», запрет распространения в странах, где VPN запрещены). Включайте сознательно.",
-     "location": "https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/githubmirror/clean/vless.txt"},
-    {"name": "nodesradar", "type": "url", "trusted": false, "enabled": false,
-     "note": "ВЫКЛЮЧЕН: лицензия не указана.", "location": "https://radarhub.top/v2ray.txt"}
+    {
+      "name": "igareck-wl-reality-mobile",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Для обхода белых списков мобильного интернета РФ. Репозиторий GPL-3.0. Адрес raw выведен из имени файла на странице репозитория.",
+      "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Vless-Reality-White-Lists-Rus-Mobile.txt"
+    },
+    {
+      "name": "igareck-white-cidr-checked",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Белые списки по CIDR (проверенные). GPL-3.0.",
+      "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-CIDR-RU-checked.txt"
+    },
+    {
+      "name": "igareck-white-sni-all",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Белые списки по SNI. GPL-3.0.",
+      "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/WHITE-SNI-RU-all.txt"
+    },
+    {
+      "name": "igareck-black-vless",
+      "tags": [
+        "russia-blocks"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Обход обычных блокировок в РФ. GPL-3.0.",
+      "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS.txt"
+    },
+    {
+      "name": "igareck-black-vless-mobile",
+      "tags": [
+        "russia-blocks"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS_mobile.txt"
+    },
+    {
+      "name": "igareck-black-ss",
+      "tags": [
+        "russia-blocks"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "location": "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_SS%2BAll_RUS.txt"
+    },
+    {
+      "name": "rjsxrd-bypass-all",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Безопасные (secure) конфиги для обхода SNI/CIDR. MIT; обновляется ежечасно. Страница советует мобильным брать части по 300, но мы всё равно фильтруем сами.",
+      "location": "https://raw.githubusercontent.com/whoahaow/rjsxrd/refs/heads/main/githubmirror/bypass/bypass-all.txt"
+    },
+    {
+      "name": "rjsxrd-default-secure",
+      "tags": [
+        "russia-blocks"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": false,
+      "note": "ВЫКЛЮЧЕН: файл по этому адресу не существует (первый запуск вернул HTTPError; автор создаёт папку default только по флагу).",
+      "location": "https://raw.githubusercontent.com/whoahaow/rjsxrd/refs/heads/main/githubmirror/default/all-secure.txt"
+    },
+    {
+      "name": "barry-far-all",
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "MIT; обновляется каждые 15 минут. Большой агрегатор.",
+      "location": "https://raw.githubusercontent.com/barry-far/V2ray-config/main/All_Configs_Sub.txt"
+    },
+    {
+      "name": "epodonios-all",
+      "type": "url",
+      "trusted": false,
+      "enabled": false,
+      "note": "ВЫКЛЮЧЕН: первый запуск вернул HTTPError. Лицензия в репозитории противоречива (MIT/GPL-3.0).",
+      "location": "https://github.com/Epodonios/v2ray-configs/raw/main/All_Configs_Sub.txt"
+    },
+    {
+      "name": "free-nodes-735754647",
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "MIT.",
+      "location": "https://735754647.github.io/Free-Nodes/v2ray.txt"
+    },
+    {
+      "name": "nexus-nodes-ninjastrikers",
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "MIT. Агрегатор сторонних коллекторов.",
+      "location": "https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/all.txt"
+    },
+    {
+      "name": "kort0881-vless-clean",
+      "type": "url",
+      "trusted": false,
+      "enabled": false,
+      "note": "ВЫКЛЮЧЕН: лицензия противоречива («MIT с ограничениями», запрет распространения в странах, где VPN запрещены). Включайте сознательно.",
+      "location": "https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/githubmirror/clean/vless.txt"
+    },
+    {
+      "name": "nodesradar",
+      "type": "url",
+      "trusted": false,
+      "enabled": false,
+      "note": "ВЫКЛЮЧЕН: лицензия не указана.",
+      "location": "https://radarhub.top/v2ray.txt"
+    }
   ]
 }

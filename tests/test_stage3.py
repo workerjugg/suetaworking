@@ -233,6 +233,14 @@ class Whitelist(unittest.TestCase):
         a.tags, b.tags = {"x"}, {"whitelist"}
         self.assertEqual(engine.deduplicate([a, b])[0].tags, {"x", "whitelist"})
 
+    def test_plain_list_with_hash_headers_is_not_mistaken_for_base64(self):
+        head = "\n".join(["# profile-title: WHITE LISTS", "# profile-update-interval: 1",
+                          "# Date/Time: 2026-09-08 / 23:30 (Moscow)", "# Количество: 2",
+                          "# For more info - visit: www.github.com/igareck/vpn-configs-for-russia", ""])
+        self.assertEqual(len(parse_text(head + V + "\n" + T + "\n")), 2)
+        base = "#profile-title: base64:AAAA\n#support-url: https://github.com/x/y\n"
+        self.assertEqual(len(parse_text(base + V + "\n")), 1)
+
     def test_oversized_source_is_truncated_not_dropped(self):
         big = (V + "\n") * 10
         class R:

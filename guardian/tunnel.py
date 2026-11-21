@@ -25,8 +25,8 @@ from pathlib import Path
 from . import generators
 from .models import Node
 
-TEST_URL = "https://www.gstatic.com/generate_204"
-IP_URL = "https://api.ipify.org"
+TEST_URLS = ["https://www.gstatic.com/generate_204", "https://cp.cloudflare.com/generate_204"]
+IP_URLS = ["https://api.ipify.org", "https://icanhazip.com", "https://ifconfig.me/ip"]
 SPEED_URL = "https://speed.cloudflare.com/__down?bytes=2000000"
 
 
@@ -68,14 +68,20 @@ def _get(url: str, proxy_port: int | None, timeout: float, max_bytes: int = 4096
         return r.status, data, time.perf_counter() - t0
 
 
+def _fetch_ip(port: int | None, timeout: float) -> str:
+    for u in IP_URLS:
+        try:
+            _, data, _ = _get(u, port, timeout)
+            ip = data.decode().strip()
+            ipaddress.ip_address(ip)
+            return ip
+        except Exception:
+            continue
+    return ""
+
+
 def direct_ip(timeout: float = 10) -> str:
-    try:
-        _, data, _ = _get(IP_URL, None, timeout)
-        ip = data.decode().strip()
-        ipaddress.ip_address(ip)
-        return ip
-    except Exception:
-        return ""
+    return _fetch_ip(None, timeout)
 
 
 def _wait_port(port: int, proc, deadline: float) -> bool:
@@ -112,14 +118,23 @@ def test_node(n: Node, binary: str, my_ip: str, with_speed: bool = False,
             lat = []
             for _ in range(tries):
                 try:
-                    st, _, dt = _get(TEST_URL, port, timeout)
-                    _, ipdata, _ = _get(IP_URL, port, timeout)
-                    ip = ipdata.decode().strip()
-                    ipaddress.ip_address(ip)
-                    if st == 204 and ip != my_ip:
-                        n.tunnel_successes += 1
+                    st, dt = None, 0.0
+                    for url in TEST_URLS:
+                        try:
+                            st, _, dt = _get(url, port, timeout)
+                            if st == 204:
+                                break
+                        except Exception:
+                            continue
+                    if st != 204:
+                        continue
+                    ip = _fetch_ip(port, timeout)      # вторично: нужен для геолокации и проверки «утечки»
+                    if ip and ip == my_ip:
+                        continue                       # трафик вышел напрямую — узел не считается
+                    n.tunnel_successes += 1
+                    if ip:
                         n.exit_ip = ip
-                        lat.append(dt * 1000)
+                    lat.append(dt * 1000)
                 except Exception:
                     continue
             n.tunnel_ok = n.tunnel_successes >= 1

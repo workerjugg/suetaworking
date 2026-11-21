@@ -100,7 +100,7 @@ _B64_LINE = re.compile(r"^[A-Za-z0-9+/_\-=\s]{24,}$")
 
 
 def _parse(text: str, max_nodes: int, depth: int) -> list[Node]:
-    if "://" not in text[:200]:
+    if "://" not in text:   # настоящий base64 никогда не содержит «://»; plain-списки с #-заголовками содержат
         try:
             text = b64decode_loose("".join(text.split()))
         except Exception:

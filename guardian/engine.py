@@ -81,7 +81,7 @@ def build_profiles(nodes: list[Node], limit: int = 100,
     wl = [n for n in nodes if "whitelist" in n.tags and n.alive and n.trust in GOOD_TRUST]
     for n in wl:
         n.score = score(n)
-    wl.sort(key=lambda n: (n.best_latency or 1e9))
+    wl.sort(key=lambda n: (n.tunnel_ok is not True, n.best_latency or 1e9))
     stable = [n for n in by_score if n.stability >= 0.9
               and (n.hist_total >= 3 or n.tunnel_attempts or n.attempts)]
     return {
