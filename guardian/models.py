@@ -14,6 +14,7 @@ class Node:
     name: str = ""
     params: dict = field(default_factory=dict)
     sources: set = field(default_factory=set)
+    tags: set = field(default_factory=set)       # например {"whitelist"} из конфигурации источника
     trust: str = "PUBLIC"    # TRUSTED | VERIFIED | PUBLIC | SUSPICIOUS | BLOCKED
     errors: list = field(default_factory=list)   # синтаксические ошибки
     flags: list = field(default_factory=list)    # замечания безопасности

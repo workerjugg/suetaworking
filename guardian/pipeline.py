@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 import shutil
 import time
 import urllib.request
@@ -14,17 +15,19 @@ from . import clients, engine, generators, geo, history, notify, tunnel, validat
 from .models import Node
 from .parsers import parse_text
 
-MAX_BYTES = 5 * 1024 * 1024
+MAX_BYTES = 8 * 1024 * 1024
 
 
-def fetch_url(url: str, timeout: int = 20) -> str:
+def fetch_url(url: str, timeout: int = 30) -> str:
+    """Скачивает https-источник. Слишком большой файл не отбрасывается целиком:
+    берётся первые MAX_BYTES без оборванной последней строки."""
     if not url.startswith("https://"):
         raise ValueError("only https sources are allowed")
     req = urllib.request.Request(url, headers={"User-Agent": "FreeVPN-Guardian/0.2"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = r.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
-        raise ValueError("source too large")
+        data = data[:MAX_BYTES].rsplit(b"\n", 1)[0]
     return data.decode("utf-8", errors="replace")
 
 
@@ -42,6 +45,7 @@ def collect(sources: list[dict], delay: float = 1.0, retries: int = 2) -> tuple[
                 found = parse_text(text)
                 for n in found:
                     n.sources.add(name)
+                    n.tags |= set(s.get("tags", []))
                     n.params["_trusted_src"] = "1" if s.get("trusted") else ""
                 nodes += found
                 health[name] = {"ok": True, "parsed": len(found),
@@ -106,13 +110,25 @@ def run(config: dict, out_dir: Path, probe: bool = True, data_dir: Path | None =
         validate.apply_static_checks(n, trusted)
     nodes = engine.deduplicate(raw_nodes)
     candidates = [n for n in nodes if n.trust in ("TRUSTED", "PUBLIC")]
+    # Лимит проверок за запуск (чтобы уложиться во время Actions). Сначала узлы для белых
+    # списков и найденные в нескольких источниках, остальные — случайная выборка.
+    max_probe = limits.get("max_probe", 4000)
+    if len(candidates) > max_probe:
+        random.shuffle(candidates)
+        candidates.sort(key=lambda n: (-("whitelist" in n.tags), -len(n.sources)))
+        skipped = len(candidates) - max_probe
+        for n in candidates[max_probe:]:
+            n.reject_reason = "not_probed_limit"
+        candidates = candidates[:max_probe]
+    else:
+        skipped = 0
 
     hist_path = data_dir / "history.json"
     hist = history.load(hist_path)
     tunnel_info = {"ran": False, "reason": "disabled"}
     require_tunnel = False
     if probe:
-        validate.probe_all(candidates, workers=limits.get("workers", 64))
+        validate.probe_all(candidates, workers=limits.get("workers", 128), attempts=3, timeout=3.0)
         binary = tunnel.find_singbox() if use_tunnel else None
         if binary:
             tc = config.get("tunnel", {})
@@ -131,7 +147,8 @@ def run(config: dict, out_dir: Path, probe: bool = True, data_dir: Path | None =
     for n in candidates:
         qs = [min(1.0, rep[s]["alive_ratio"] / 0.2) for s in n.sources if s in rep]
         n.source_quality = max(qs) if qs else 1.0
-    usable_now = [n for n in candidates if engine.is_usable(n, require_tunnel)]
+    usable_now = [n for n in candidates if engine.is_usable(n, require_tunnel)
+                  or ("whitelist" in n.tags and n.alive)]
     if use_geo and probe:
         geo.annotate(usable_now[: limits.get("geo_max", 1500)], fetch=geo_fetch)
     history.update(hist, candidates, now, ttl_days=limits.get("ttl_days", 3))
@@ -145,6 +162,7 @@ def run(config: dict, out_dir: Path, probe: bool = True, data_dir: Path | None =
         "updated": now.isoformat(timespec="seconds"),
         "found_raw": len(raw_nodes), "unique": len(nodes), "alive": alive,
         "excluded_total": len(nodes) - alive,
+        "not_probed": skipped,
         "excluded": dict(Counter((n.reject_reason.split(":")[0] or "dead")
                                  for n in nodes if n.fingerprint not in alive_ids)),
         "protocols": dict(Counter(n.protocol for n in profiles["all"])),

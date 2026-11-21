@@ -214,5 +214,51 @@ class EndToEnd(unittest.TestCase):
             self.assertEqual((out / "best").read_text(), good_best)
 
 
+class Whitelist(unittest.TestCase):
+    def test_whitelist_profile_ignores_runner_tunnel_failure(self):
+        n = good(V, "RU", 40)
+        n.tags = {"whitelist"}
+        n.tunnel_ok = False
+        p = engine.build_profiles([n])
+        self.assertEqual(len(p["whitelist"]), 1)
+        self.assertEqual(len(p["all"]), 0)
+
+    def test_whitelist_excludes_suspicious(self):
+        n = good(V, "RU", 40, trust="SUSPICIOUS")
+        n.tags = {"whitelist"}
+        self.assertEqual(engine.build_profiles([n])["whitelist"], [])
+
+    def test_dedup_merges_tags(self):
+        a, b = parse_line(V), parse_line(V)
+        a.tags, b.tags = {"x"}, {"whitelist"}
+        self.assertEqual(engine.deduplicate([a, b])[0].tags, {"x", "whitelist"})
+
+    def test_oversized_source_is_truncated_not_dropped(self):
+        big = (V + "\n") * 10
+        class R:
+            def __init__(s, d): s.d = d
+            def read(s, n): return s.d[:n]
+            def __enter__(s): return s
+            def __exit__(s, *a): pass
+        with mock.patch.object(pipeline, "MAX_BYTES", len(V) * 3), \
+             mock.patch("urllib.request.urlopen", lambda *a, **k: R(big.encode())):
+            txt = pipeline.fetch_url("https://example.com/x")
+        self.assertTrue(txt.startswith("vless://"))
+        self.assertLessEqual(len(txt.splitlines()), 3)
+
+    def test_max_probe_limit(self):
+        def fake_probe(n, **kw):
+            n.attempts, n.successes, n.latency_ms, n.jitter_ms = 3, 3, 50.0, 1.0
+        lines = [f"trojan://p{i}@203.0.113.{i % 250 + 1}:{1000 + i}?sni=e.org" for i in range(30)]
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(validate, "tcp_probe", fake_probe):
+            d = Path(d); (d / "s.txt").write_text("\n".join(lines))
+            cfg = {"limits": {"min_alive": 1, "source_delay": 0, "max_probe": 10},
+                   "sources": [{"name": "s", "type": "file", "location": str(d / "s.txt"), "tags": ["whitelist"]}]}
+            st = pipeline.run(cfg, d / "subs", data_dir=d / "data", use_tunnel=False, use_geo=False)
+        self.assertEqual(st["alive"], 10)
+        self.assertEqual(st["not_probed"], 20)
+        self.assertEqual(st["profiles"]["whitelist"], 10)
+
+
 if __name__ == "__main__":
     unittest.main()

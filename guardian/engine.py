@@ -15,6 +15,7 @@ def deduplicate(nodes: list[Node]) -> list[Node]:
         fp = n.fingerprint
         if fp in seen:
             seen[fp].sources |= n.sources
+            seen[fp].tags |= n.tags
         else:
             seen[fp] = n
     return list(seen.values())
@@ -74,6 +75,13 @@ def build_profiles(nodes: list[Node], limit: int = 100,
     best_all = cap_by(cap_per_source(foreign), lambda n: n.country or "ZZ", 0.25, 5)
     best = best_all[:limit]
     best_ids = {n.fingerprint for n in best}
+    # Профиль для обхода «белых списков». С раннера GitHub проверить обход нельзя (он не в
+    # мобильной сети РФ), поэтому здесь достаточно живого TCP; результат туннельного теста
+    # с раннера не отсекает такие узлы (они могут принимать подключения только из РФ).
+    wl = [n for n in nodes if "whitelist" in n.tags and n.alive and n.trust in GOOD_TRUST]
+    for n in wl:
+        n.score = score(n)
+    wl.sort(key=lambda n: (n.best_latency or 1e9))
     stable = [n for n in by_score if n.stability >= 0.9
               and (n.hist_total >= 3 or n.tunnel_attempts or n.attempts)]
     return {
@@ -89,6 +97,7 @@ def build_profiles(nodes: list[Node], limit: int = 100,
         "america": [n for n in by_score if n.region == "america"][:limit],
         "russia": [n for n in by_score if n.region == "russia"][:30],
         "backup": [n for n in foreign if n.fingerprint not in best_ids][:limit],
+        "whitelist": wl[:limit * 3],
         "vless": [n for n in by_score if n.protocol == "vless"],
         "vmess": [n for n in by_score if n.protocol == "vmess"],
         "trojan": [n for n in by_score if n.protocol == "trojan"],
