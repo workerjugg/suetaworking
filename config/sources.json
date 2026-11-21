@@ -1,0 +1,30 @@
+{
+  "limits": {
+    "max_nodes": 20000, "workers": 64, "profile_size": 100, "min_alive": 5,
+    "source_delay": 1.0, "ttl_days": 3, "geo_max": 1500, "client_update_hours": 6
+  },
+  "tunnel": {"budget": 300, "workers": 8, "speed_top": 30, "max_seconds": 1500},
+  "sources": [
+    {
+      "name": "free-nodes-735754647",
+      "note": "MIT. Адрес взят из README проекта; живость проверит первый запуск.",
+      "type": "url",
+      "location": "https://735754647.github.io/Free-Nodes/v2ray.txt",
+      "trusted": false, "enabled": true
+    },
+    {
+      "name": "nexus-nodes-ninjastrikers",
+      "note": "MIT. Агрегатор сторонних коллекторов. Адрес из README проекта.",
+      "type": "url",
+      "location": "https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/all.txt",
+      "trusted": false, "enabled": true
+    },
+    {
+      "name": "nodesradar",
+      "note": "Лицензия в репозитории не указана. Включайте на своё усмотрение.",
+      "type": "url",
+      "location": "https://radarhub.top/v2ray.txt",
+      "trusted": false, "enabled": false
+    }
+  ]
+}

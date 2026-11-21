@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeVPN Guardian</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1b1f24;--mut:#667085;--line:#e3e6ea;--acc:#2563eb;--warn:#b45309;--warnbg:#fef3c7;--ok:#15803d;--bad:#b91c1c}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1216;--card:#171b21;--fg:#e6e8eb;--mut:#98a2b3;--line:#2a313a;--acc:#60a5fa;--warn:#fbbf24;--warnbg:#3a2d0a;--ok:#4ade80;--bad:#f87171}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:8px 0}h2{font-size:16px;margin:0 0 8px}
+.warn{background:var(--warnbg);color:var(--warn);padding:10px 12px;border-radius:8px;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto}
+.big{font-size:26px;font-weight:600}.mut{color:var(--mut);font-size:13px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{cursor:pointer;color:var(--mut)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+select,input{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit}
+code{background:var(--bg);padding:1px 5px;border-radius:4px;word-break:break-all}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+a{color:var(--acc)}
+</style>
+</head>
+<body><main>
+<h1>FreeVPN Guardian</h1>
+<div class="warn" id="warn">Публичные узлы неизвестных владельцев: владелец может видеть и подменять трафик. Не используйте для банков и почты. Анонимность не гарантируется.</div>
+<div class="grid" id="tiles"></div>
+<div class="cols">
+  <div class="card"><h2>Страны</h2><div id="countries"></div></div>
+  <div class="card"><h2>Протоколы</h2><div id="protocols"></div></div>
+  <div class="card"><h2>Почему исключены</h2><div id="excluded"></div></div>
+  <div class="card"><h2>История (рабочих)</h2><div id="spark"></div></div>
+</div>
+<div class="card"><h2>Источники</h2><div id="sources"></div></div>
+<div class="card" style="margin-top:10px"><h2>Подписки</h2><div id="subs"></div></div>
+<div class="card" style="margin-top:10px"><h2>Серверы</h2>
+  <div class="filters">
+    <select id="fc"><option value="">Все страны</option></select>
+    <select id="fp"><option value="">Все протоколы</option></select>
+    <select id="ft"><option value="">Любое доверие</option></select>
+    <label class="mut">Задержка ≤ <input id="fl" type="number" min="0" style="width:80px" placeholder="мс"></label>
+    <label class="mut">Стабильность ≥ <input id="fs" type="number" min="0" max="1" step="0.1" style="width:70px" placeholder="0-1"></label>
+    <label class="mut">Рейтинг ≥ <input id="fr" type="number" min="0" max="100" style="width:70px"></label>
+  </div>
+  <div id="count" class="mut"></div>
+  <table id="tbl"><thead></thead><tbody></tbody></table>
+</div>
+<div class="card" style="margin-top:10px"><h2>Совместимость с клиентами</h2><div id="compat"></div></div>
+<p class="mut" id="foot"></p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const el=(t,txt,cls)=>{const e=document.createElement(t);if(txt!==undefined)e.textContent=txt;if(cls)e.className=cls;return e};
+const get=u=>fetch(u,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(u);return r.json()});
+let servers=[],sortKey='score',sortDir=-1;
+const cols=[['country','Страна'],['protocol','Протокол'],['host','Хост'],['port','Порт'],['trust','Доверие'],['latency_ms','Задержка, мс'],['jitter_ms','Jitter'],['stability','Стабильн.'],['speed_mbps','Мбит/с*'],['score','Рейтинг'],['sources','Источн.']];
+function kv(box,obj,limit){box.replaceChildren();const t=el('table');
+  Object.entries(obj||{}).sort((a,b)=>b[1]-a[1]).slice(0,limit||50).forEach(([k,v])=>{const r=el('tr');r.append(el('td',k),el('td',v));t.append(r)});
+  box.append(t)}
+function tile(label,val){const d=el('div',null,'card');d.append(el('div',val,'big'),el('div',label,'mut'));$('tiles').append(d)}
+function fillSel(id,vals){const s=$(id);[...new Set(vals)].sort().forEach(v=>{const o=el('option',v);o.value=v;s.append(o)})}
+function render(){
+  const c=$('fc').value,p=$('fp').value,t=$('ft').value,l=+$('fl').value,s=+$('fs').value,r=+$('fr').value;
+  let rows=servers.filter(x=>(!c||x.country===c)&&(!p||x.protocol===p)&&(!t||x.trust===t)&&(!l||(x.latency_ms!=null&&x.latency_ms<=l))&&(!s||x.stability>=s)&&(!r||x.score>=r));
+  rows.sort((a,b)=>((a[sortKey]??-1)>(b[sortKey]??-1)?1:-1)*sortDir);
+  $('count').textContent=`Показано ${Math.min(rows.length,300)} из ${rows.length}`;
+  const tb=$('tbl').tBodies[0];tb.replaceChildren();
+  rows.slice(0,300).forEach(x=>{const tr=el('tr');cols.forEach(([k])=>{const v=x[k];tr.append(el('td',v==null?'—':v))});tb.append(tr)});
+}
+function head(){const tr=el('tr');cols.forEach(([k,n])=>{const th=el('th',n);th.onclick=()=>{sortDir=sortKey===k?-sortDir:-1;sortKey=k;render()};tr.append(th)});$('tbl').tHead.replaceChildren(tr)}
+function spark(log){const box=$('spark');box.replaceChildren();if(!log.length)return;
+  const W=240,H=60,m=Math.max(1,...log.map(x=>x.alive));
+  const pts=log.map((x,i)=>`${(i/(Math.max(1,log.length-1)))*W},${H-(x.alive/m)*(H-6)-3}`).join(' ');
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width','100%');
+  const pl=document.createElementNS(ns,'polyline');pl.setAttribute('points',pts);pl.setAttribute('fill','none');pl.setAttribute('stroke','var(--acc)');pl.setAttribute('stroke-width','2');svg.append(pl);box.append(svg);
+  box.append(el('div',`Последнее: ${log[log.length-1].alive} из ${log[log.length-1].unique}, максимум ${m}`,'mut'))}
+async function main(){
+  const base='subscriptions/';
+  let st;try{st=await get(base+'stats.json')}catch(e){$('tiles').append(el('div','Данных пока нет — дождитесь первого запуска workflow.'));return}
+  tile('найдено (сырых)',st.found_raw);tile('уникальных',st.unique);tile('рабочих',st.alive);tile('исключено',st.excluded_total);
+  tile('средняя задержка, мс',st.avg_latency_ms??'—');tile('обновлено (UTC)',st.updated.replace('T',' ').slice(0,16));
+  $('foot').textContent='Уровень проверки: '+st.check_level+'. *Скорость и задержка измерены с раннера GitHub, а не из вашей сети.';
+  kv($('countries'),st.countries,40);kv($('protocols'),st.protocols);kv($('excluded'),st.excluded);
+  const sb=$('sources');const t=el('table');const h=el('tr');['Источник','Статус','Разобрано','Уник.','Дубли','Рабочих %','Подозр. %'].forEach(x=>h.append(el('th',x)));t.append(h);
+  Object.entries(st.sources||{}).forEach(([n,s])=>{const r=el('tr');r.append(el('td',n),el('td',s.ok?'ok':('ошибка '+(s.error||'')),s.ok?'ok':'bad'),el('td',s.parsed),el('td',s.unique??0),el('td',s.duplicates??0),el('td',Math.round((s.alive_ratio||0)*100)),el('td',Math.round((s.suspicious_share||0)*100)));t.append(r)});sb.append(t);
+  const subs=$('subs');const names=Object.keys(st.profiles||{}).concat(['happ','incy','singbox','v2rayn','v2rayng','hiddify','nekobox','shadowrocket','v2box','foxray','streisand']);
+  const abs=new URL(base,location.href).href;
+  [...new Set(names)].forEach(n=>{const d=el('div');d.append(el('span',n+': ','mut'),el('code',abs+n));subs.append(d)});
+  try{const c=await get(base+'compat.json');const ct=el('table');const ch=el('tr');['Клиент','Формат','Подтверждение','Статус'].forEach(x=>ch.append(el('th',x)));ct.append(ch);
+    Object.entries(c).forEach(([n,v])=>{const r=el('tr');r.append(el('td',n),el('td',v.format),el('td',v.evidence),el('td',v.status));ct.append(r)});$('compat').append(ct)}catch(e){}
+  try{spark(await get(base+'changelog.json'))}catch(e){}
+  servers=await get(base+'servers.json');
+  fillSel('fc',servers.map(x=>x.country));fillSel('fp',servers.map(x=>x.protocol));fillSel('ft',servers.map(x=>x.trust));
+  ['fc','fp','ft','fl','fs','fr'].forEach(i=>$(i).addEventListener('input',render));head();render();
+}
+main();
+</script>
+</body></html>
