@@ -107,6 +107,37 @@ class AllProfile(unittest.TestCase):
         self.assertEqual(len(engine.build_profiles(nodes, all_limit=7)["all"]), 7)
 
 
+class StablePick(unittest.TestCase):
+    def _n(self, i, cc, lat, **kw):
+        return good(f"trojan://p{i}@203.0.113.{i + 1}:443?sni=e.org", cc, lat,
+                    tunnel_ok=True, tunnel_attempts=2, tunnel_successes=2, speed_mbps=5.0, **kw)
+
+    def test_size_country_cap_whitelist_and_kazakhstan(self):
+        nodes = [self._n(i, "DE", 30 + i) for i in range(12)]          # много быстрых немецких
+        nodes += [self._n(20 + i, "FI", 60 + i) for i in range(5)]
+        kz = self._n(40, "KZ", 150)                                     # хуже по пингу, но казахский
+        wl = self._n(41, "RU", 200); wl.tags = {"whitelist"}            # whitelist: RU допускается
+        plain_ru = self._n(42, "RU", 5)                                 # обычный RU — не берём
+        stable = engine.build_profiles(nodes + [kz, wl, plain_ru])["stable"]
+        ids = {n.fingerprint for n in stable}
+        self.assertIn(kz.fingerprint, ids)
+        self.assertIn(wl.fingerprint, ids)
+        self.assertNotIn(plain_ru.fingerprint, ids)
+        self.assertLessEqual(sum(1 for n in stable if n.country == "DE"), 6)
+        self.assertLessEqual(len(stable), 20)
+
+    def test_proximity_and_history_raise_rank(self):
+        near = self._n(1, "FI", 80)
+        far = self._n(2, "US", 80)
+        self.assertGreater(engine.stable_score(near), engine.stable_score(far))
+        steady = self._n(3, "US", 80, hist_ok=9, hist_total=10)
+        self.assertGreater(engine.stable_score(steady), engine.stable_score(far))
+
+    def test_stable_size_limit(self):
+        nodes = [self._n(i, ["DE", "FI", "NL", "SE", "PL", "CZ", "AT", "FR"][i % 8], 30 + i) for i in range(60)]
+        self.assertEqual(len(engine.build_profiles(nodes, stable_size=20)["stable"]), 20)
+
+
 class Generators(unittest.TestCase):
     def test_label_keeps_uri_valid(self):
         n = good(V)

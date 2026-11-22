@@ -25,6 +25,6 @@ jobs:
           d = json.load(open("stats.json"))
           age = (datetime.now(timezone.utc) - datetime.fromisoformat(d["updated"])).total_seconds() / 3600
           print("age_hours", round(age, 1), "alive", d["alive"])
-          if age > 30 or d["alive"] < 5:
+          if age > 5 or d["alive"] < 5:
               sys.exit("stale or too few servers")
           EOF

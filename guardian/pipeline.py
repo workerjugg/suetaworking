@@ -163,7 +163,10 @@ def run(config: dict, out_dir: Path, probe: bool = True, data_dir: Path | None =
 
     profiles = engine.build_profiles(candidates, limits.get("profile_size", 100), require_tunnel,
                                      all_limit=limits.get("all_limit", 300),
-                                     strict=require_tunnel, min_speed=limits.get("min_speed_mbps", 1.0))
+                                     strict=require_tunnel, min_speed=limits.get("min_speed_mbps", 1.0),
+                                     stable_size=limits.get("stable_size", 20),
+                                     stable_wl_quota=limits.get("stable_wl_quota", 6),
+                                     stable_country_cap=limits.get("stable_country_cap", 6))
     alive = len(profiles["verified"])          # «рабочие» = прошли проверку; от этого зависит публикация
     alive_ids = {n.fingerprint for n in profiles["all"]}
     lats = [n.best_latency for n in profiles["all"] if n.best_latency is not None]

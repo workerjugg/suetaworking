@@ -65,6 +65,46 @@ def cap_per_source(nodes: list[Node], share: float = 0.4, min_cap: int = 10) -> 
     return cap_by(nodes, lambda n: sorted(n.sources)[0] if n.sources else "", share, min_cap)
 
 
+# Близость к Самаре (≈53°с.ш., 50°в.д.): приблизительный бонус к рейтингу. Это ПОДСКАЗКА для выбора,
+# а не измерение; реальная задержка по-прежнему входит в рейтинг. Точные замеры из вашей сети — оптимизатор.
+PROXIMITY = {"RU": 15, "KZ": 15, "BY": 11, "UA": 8, "FI": 12, "EE": 12, "LV": 11, "LT": 11, "PL": 10,
+             "SE": 9, "TR": 9, "GE": 9, "AZ": 9, "AM": 8, "UZ": 8, "DE": 8, "NL": 8, "CZ": 8, "AT": 7,
+             "BG": 7, "RO": 7, "HU": 7, "FR": 6, "GB": 6, "CH": 6, "AE": 5, "JP": 2, "KR": 2, "SG": 2,
+             "HK": 3, "US": 1, "CA": 1}
+
+
+def stable_score(n: Node) -> float:
+    s = n.score + PROXIMITY.get((n.country or "").upper(), 0)
+    if n.hist_total >= 3 and n.hist_ok / n.hist_total >= 0.8:
+        s += 10                                  # подтверждённая стабильность за несколько запусков
+    return s
+
+
+def stable_pick(usable: list[Node], size: int = 20, wl_quota: int = 6, country_cap: int = 6,
+                kz_quota: int = 1) -> list[Node]:
+    """Самые лучшие `size` серверов: гарантированная доля whitelist-узлов (прошедших
+    реальную проверку), казахский сервер если есть, остальное — по рейтингу с учётом близости."""
+    pool = [n for n in usable if n.region != "russia" or "whitelist" in n.tags]  # обычные RU-узлы не нужны
+    pool.sort(key=lambda n: -stable_score(n))
+    picked: list[Node] = []
+    per_country: Counter = Counter()
+
+    def take(n: Node) -> bool:
+        if n in picked or len(picked) >= size or per_country[n.country or "ZZ"] >= country_cap:
+            return False
+        picked.append(n)
+        per_country[n.country or "ZZ"] += 1
+        return True
+
+    for n in [x for x in pool if "whitelist" in x.tags][:wl_quota]:
+        take(n)
+    for n in [x for x in pool if (x.country or "").upper() == "KZ"][:kz_quota]:
+        take(n)
+    for n in pool:
+        take(n)
+    return sorted(picked, key=lambda n: -stable_score(n))
+
+
 def passes_quality(n: Node, strict: bool, min_speed: float) -> bool:
     """Строгий отбор «только рабочие»: оба прогона через туннель успешны, есть измеренная
     скорость не ниже порога, стабильность по истории не ниже 0.7."""
@@ -78,7 +118,8 @@ def passes_quality(n: Node, strict: bool, min_speed: float) -> bool:
 
 
 def build_profiles(nodes: list[Node], limit: int = 100, require_tunnel: bool = False,
-                   all_limit: int = 300, strict: bool = False, min_speed: float = 0.0) -> dict[str, list[Node]]:
+                   all_limit: int = 300, strict: bool = False, min_speed: float = 0.0,
+                   stable_size: int = 20, stable_wl_quota: int = 6, stable_country_cap: int = 6) -> dict[str, list[Node]]:
     usable = [n for n in nodes if is_usable(n, require_tunnel) and passes_quality(n, strict, min_speed)]
     for n in usable:
         n.score = score(n)
@@ -104,7 +145,7 @@ def build_profiles(nodes: list[Node], limit: int = 100, require_tunnel: bool = F
         "verified": by_score,
         "best": best,
         "low-ping": sorted(usable, key=lambda n: n.best_latency or 1e9)[:limit],
-        "stable": stable[:limit],
+        "stable": stable_pick(usable, stable_size, stable_wl_quota, stable_country_cap),
         "fast": sorted((n for n in usable if n.speed_mbps),
                        key=lambda n: -(n.speed_mbps or 0))[:limit],
         "privacy": [n for n in by_score if n.trust == "TRUSTED"][:limit],

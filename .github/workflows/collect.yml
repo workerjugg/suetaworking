@@ -2,7 +2,7 @@ name: collect-and-publish
 
 on:
   schedule:
-    - cron: "17 */6 * * *"      # каждые 6 часов; ~4 запуска/сутки, укладывается в бесплатные лимиты
+    - cron: "7 * * * *"          # каждый час (публичный репозиторий: минуты Actions бесплатны)
   workflow_dispatch:
 
 permissions:
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     environment:
       name: github-pages
     steps:
