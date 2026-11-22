@@ -162,7 +162,8 @@ def run(config: dict, out_dir: Path, probe: bool = True, data_dir: Path | None =
     history.update(hist, candidates, now, ttl_days=limits.get("ttl_days", 3))
 
     profiles = engine.build_profiles(candidates, limits.get("profile_size", 100), require_tunnel,
-                                     all_limit=limits.get("all_limit", 1500))
+                                     all_limit=limits.get("all_limit", 300),
+                                     strict=require_tunnel, min_speed=limits.get("min_speed_mbps", 1.0))
     alive = len(profiles["verified"])          # «рабочие» = прошли проверку; от этого зависит публикация
     alive_ids = {n.fingerprint for n in profiles["all"]}
     lats = [n.best_latency for n in profiles["all"] if n.best_latency is not None]

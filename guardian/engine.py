@@ -65,9 +65,21 @@ def cap_per_source(nodes: list[Node], share: float = 0.4, min_cap: int = 10) -> 
     return cap_by(nodes, lambda n: sorted(n.sources)[0] if n.sources else "", share, min_cap)
 
 
-def build_profiles(nodes: list[Node], limit: int = 100,
-                   require_tunnel: bool = False, all_limit: int = 1500) -> dict[str, list[Node]]:
-    usable = [n for n in nodes if is_usable(n, require_tunnel)]
+def passes_quality(n: Node, strict: bool, min_speed: float) -> bool:
+    """Строгий отбор «только рабочие»: оба прогона через туннель успешны, есть измеренная
+    скорость не ниже порога, стабильность по истории не ниже 0.7."""
+    if not strict:
+        return True
+    if n.tunnel_attempts and n.tunnel_successes < n.tunnel_attempts:
+        return False
+    if min_speed and (n.speed_mbps is None or n.speed_mbps < min_speed):
+        return False
+    return n.stability >= 0.7
+
+
+def build_profiles(nodes: list[Node], limit: int = 100, require_tunnel: bool = False,
+                   all_limit: int = 300, strict: bool = False, min_speed: float = 0.0) -> dict[str, list[Node]]:
+    usable = [n for n in nodes if is_usable(n, require_tunnel) and passes_quality(n, strict, min_speed)]
     for n in usable:
         n.score = score(n)
     by_score = sorted(usable, key=lambda n: -n.score)
@@ -86,7 +98,7 @@ def build_profiles(nodes: list[Node], limit: int = 100,
               and (n.hist_total >= 3 or n.tunnel_attempts or n.attempts)]
     by_ping = sorted(usable, key=lambda n: n.best_latency or 1e9)
     verified_ids = {n.fingerprint for n in by_ping}
-    all_list = (by_ping + [n for n in wl if n.fingerprint not in verified_ids])[:all_limit]
+    all_list = by_ping[:all_limit]          # только проверенные, по пингу; whitelist без проверки — отдельная ссылка
     return {
         "all": all_list,
         "verified": by_score,

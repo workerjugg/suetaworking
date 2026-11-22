@@ -9,12 +9,13 @@
     "ttl_days": 3,
     "geo_max": 1500,
     "client_update_hours": 6,
-    "all_limit": 1500
+    "all_limit": 300,
+    "min_speed_mbps": 1.0
   },
   "tunnel": {
     "budget": 2500,
     "workers": 32,
-    "speed_top": 60,
+    "speed_top": 2500,
     "max_seconds": 2700
   },
   "sources": [

@@ -80,14 +80,27 @@ class Profiles(unittest.TestCase):
 
 
 class AllProfile(unittest.TestCase):
-    def test_all_is_verified_first_by_ping_then_whitelist(self):
+    def test_all_is_verified_only_sorted_by_ping(self):
         a = good(V, "DE", 90, tunnel_ok=True)
         b = good(T, "NL", 20, tunnel_ok=True)
         w = good("trojan://w@203.0.113.50:443?sni=e.org", "RU", 5)
         w.tags = {"whitelist"}
         w.tunnel_ok = False          # с раннера не прошёл, но whitelist-узлы сохраняются
         order = [n.country for n in engine.build_profiles([a, b, w])["all"]]
-        self.assertEqual(order, ["NL", "DE", "RU"])
+        self.assertEqual(order, ["NL", "DE"])
+
+    def test_strict_mode_drops_half_working_and_slow(self):
+        full = good(V, "DE", 50, tunnel_ok=True, tunnel_attempts=2, tunnel_successes=2, speed_mbps=8.0)
+        half = good(T, "NL", 40, tunnel_ok=True, tunnel_attempts=2, tunnel_successes=1, speed_mbps=8.0)
+        slow = good("trojan://s@203.0.113.60:443?sni=e.org", "FR", 30, tunnel_ok=True,
+                    tunnel_attempts=2, tunnel_successes=2, speed_mbps=0.3)
+        nospeed = good("trojan://n@203.0.113.61:443?sni=e.org", "SE", 30, tunnel_ok=True,
+                       tunnel_attempts=2, tunnel_successes=2)
+        flaky = good("trojan://f@203.0.113.62:443?sni=e.org", "ES", 30, tunnel_ok=True,
+                     tunnel_attempts=2, tunnel_successes=2, speed_mbps=8.0, hist_ok=1, hist_total=10)
+        p = engine.build_profiles([full, half, slow, nospeed, flaky], strict=True, min_speed=1.0)
+        self.assertEqual([n.country for n in p["all"]], ["DE"])
+        self.assertEqual(len(engine.build_profiles([full, half, slow]).get("all")), 3)  # без strict — как раньше
 
     def test_all_limit(self):
         nodes = [good(f"trojan://p{i}@203.0.113.{i + 1}:443?sni=e.org", "DE", 10 + i) for i in range(20)]
@@ -269,7 +282,7 @@ class Whitelist(unittest.TestCase):
         p = engine.build_profiles([n])
         self.assertEqual(len(p["whitelist"]), 1)
         self.assertEqual(len(p["verified"]), 0)
-        self.assertEqual(len(p["all"]), 1)     # в единую подписку whitelist-узлы входят
+        self.assertEqual(len(p["all"]), 0)     # в `all` только проверенные; whitelist без проверки — отдельно
 
     def test_whitelist_excludes_suspicious(self):
         n = good(V, "RU", 40, trust="SUSPICIOUS")
