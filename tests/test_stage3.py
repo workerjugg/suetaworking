@@ -79,6 +79,21 @@ class Profiles(unittest.TestCase):
         self.assertLessEqual(sum(1 for n in best if n.country == "DE"), 5)
 
 
+class AllProfile(unittest.TestCase):
+    def test_all_is_verified_first_by_ping_then_whitelist(self):
+        a = good(V, "DE", 90, tunnel_ok=True)
+        b = good(T, "NL", 20, tunnel_ok=True)
+        w = good("trojan://w@203.0.113.50:443?sni=e.org", "RU", 5)
+        w.tags = {"whitelist"}
+        w.tunnel_ok = False          # с раннера не прошёл, но whitelist-узлы сохраняются
+        order = [n.country for n in engine.build_profiles([a, b, w])["all"]]
+        self.assertEqual(order, ["NL", "DE", "RU"])
+
+    def test_all_limit(self):
+        nodes = [good(f"trojan://p{i}@203.0.113.{i + 1}:443?sni=e.org", "DE", 10 + i) for i in range(20)]
+        self.assertEqual(len(engine.build_profiles(nodes, all_limit=7)["all"]), 7)
+
+
 class Generators(unittest.TestCase):
     def test_label_keeps_uri_valid(self):
         n = good(V)
@@ -86,6 +101,8 @@ class Generators(unittest.TestCase):
         n2 = parse_line(u)
         self.assertEqual((n2.host, n2.port, n2.identity), (n.host, n.port, n.identity))
         self.assertIn("PUBLIC", u)
+        self.assertEqual(generators.flag("DE"), "\U0001F1E9\U0001F1EA")
+        self.assertIn("%F0%9F%87%A9%F0%9F%87%AA", u)   # флаг в имени, закодирован корректно
         v = parse_line(generators.labeled_uri(good(VM)))
         self.assertEqual(v.host, "203.0.113.13")
 
@@ -221,7 +238,8 @@ class Whitelist(unittest.TestCase):
         n.tunnel_ok = False
         p = engine.build_profiles([n])
         self.assertEqual(len(p["whitelist"]), 1)
-        self.assertEqual(len(p["all"]), 0)
+        self.assertEqual(len(p["verified"]), 0)
+        self.assertEqual(len(p["all"]), 1)     # в единую подписку whitelist-узлы входят
 
     def test_whitelist_excludes_suspicious(self):
         n = good(V, "RU", 40, trust="SUSPICIOUS")

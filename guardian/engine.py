@@ -66,7 +66,7 @@ def cap_per_source(nodes: list[Node], share: float = 0.4, min_cap: int = 10) -> 
 
 
 def build_profiles(nodes: list[Node], limit: int = 100,
-                   require_tunnel: bool = False) -> dict[str, list[Node]]:
+                   require_tunnel: bool = False, all_limit: int = 1500) -> dict[str, list[Node]]:
     usable = [n for n in nodes if is_usable(n, require_tunnel)]
     for n in usable:
         n.score = score(n)
@@ -84,8 +84,12 @@ def build_profiles(nodes: list[Node], limit: int = 100,
     wl.sort(key=lambda n: (n.tunnel_ok is not True, n.best_latency or 1e9))
     stable = [n for n in by_score if n.stability >= 0.9
               and (n.hist_total >= 3 or n.tunnel_attempts or n.attempts)]
+    by_ping = sorted(usable, key=lambda n: n.best_latency or 1e9)
+    verified_ids = {n.fingerprint for n in by_ping}
+    all_list = (by_ping + [n for n in wl if n.fingerprint not in verified_ids])[:all_limit]
     return {
-        "all": by_score,
+        "all": all_list,
+        "verified": by_score,
         "best": best,
         "low-ping": sorted(usable, key=lambda n: n.best_latency or 1e9)[:limit],
         "stable": stable[:limit],

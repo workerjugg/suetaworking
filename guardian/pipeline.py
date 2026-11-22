@@ -153,8 +153,9 @@ def run(config: dict, out_dir: Path, probe: bool = True, data_dir: Path | None =
         geo.annotate(usable_now[: limits.get("geo_max", 1500)], fetch=geo_fetch)
     history.update(hist, candidates, now, ttl_days=limits.get("ttl_days", 3))
 
-    profiles = engine.build_profiles(candidates, limits.get("profile_size", 100), require_tunnel)
-    alive = len(profiles["all"])
+    profiles = engine.build_profiles(candidates, limits.get("profile_size", 100), require_tunnel,
+                                     all_limit=limits.get("all_limit", 1500))
+    alive = len(profiles["verified"])          # «рабочие» = прошли проверку; от этого зависит публикация
     alive_ids = {n.fingerprint for n in profiles["all"]}
     lats = [n.best_latency for n in profiles["all"] if n.best_latency is not None]
 
@@ -183,6 +184,9 @@ def run(config: dict, out_dir: Path, probe: bool = True, data_dir: Path | None =
     files = {name: generators.uri_subscription(lst) for name, lst in profiles.items()}
     for c in clients.BASE64_CLIENTS:
         files[c] = files["best"]
+    # ЕДИНАЯ ссылка для Happ: обычный текстовый список (формат из документации Happ).
+    files["all"] = generators.happ_subscription(profiles["all"])
+    files["all-b64"] = generators.uri_subscription(profiles["all"])
     files["happ"] = generators.happ_subscription(best)
     files["incy"] = generators.incy_subscription(best, interval_h=limits.get("client_update_hours", 6))
     files["singbox"] = generators.singbox_config(best)

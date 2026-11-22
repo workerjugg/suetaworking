@@ -1,20 +1,21 @@
 {
   "limits": {
-    "max_nodes": 30000,
-    "max_probe": 4000,
-    "workers": 128,
+    "max_nodes": 60000,
+    "max_probe": 8000,
+    "workers": 200,
     "profile_size": 100,
     "min_alive": 5,
     "source_delay": 1.0,
     "ttl_days": 3,
     "geo_max": 1500,
-    "client_update_hours": 6
+    "client_update_hours": 6,
+    "all_limit": 1500
   },
   "tunnel": {
-    "budget": 600,
-    "workers": 16,
-    "speed_top": 30,
-    "max_seconds": 1800
+    "budget": 800,
+    "workers": 20,
+    "speed_top": 40,
+    "max_seconds": 2400
   },
   "sources": [
     {
@@ -147,9 +148,118 @@
       "name": "nodesradar",
       "type": "url",
       "trusted": false,
-      "enabled": false,
-      "note": "ВЫКЛЮЧЕН: лицензия не указана.",
+      "enabled": true,
+      "note": "Лицензия не указана. Включён по вашему запросу «больше серверов».",
       "location": "https://radarhub.top/v2ray.txt"
+    },
+    {
+      "name": "mahdibland-eternity",
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "GPL-3.0; ~200 отфильтрованных узлов, обновление раз в 12 часов. README предупреждает о возможных сбоях обновления.",
+      "location": "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/Eternity.txt"
+    },
+    {
+      "name": "ebrasha-all",
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Лицензия в репозитории не указана; заявлено обновление каждые 15 минут.",
+      "location": "https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/refs/heads/main/all_extracted_configs.txt"
+    },
+    {
+      "name": "zhuhaiuk-nodes",
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Лицензия не указана; ~50 узлов, обновление ежечасно.",
+      "location": "https://raw.githubusercontent.com/zhuhaiuk/free-nodes/main/nodes.txt"
+    },
+    {
+      "name": "use4free-proxies",
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Лицензия не указана; обновление раз в 24 часа.",
+      "location": "https://raw.githubusercontent.com/Use4Free/ProxyCollector/master/sub/proxies.txt"
+    },
+    {
+      "name": "goldcaviar-wl-reality-mobile",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Указан вами. Заголовок файла датирован 2026-10-07 — возможно, неактуальная копия igareck.",
+      "location": "https://raw.githubusercontent.com/GoldCaviar/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile.txt"
+    },
+    {
+      "name": "zieng2-github-universal",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Основная ссылка автора на GitHub, обновление ежечасно. Лицензия не указана (проект «некоммерческий»).",
+      "location": "https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt"
+    },
+    {
+      "name": "zieng2-github-vless",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Адрес выведен по имени файла в репозитории, на странице не подтверждён.",
+      "location": "https://raw.githubusercontent.com/zieng2/wl/main/vless.txt"
+    },
+    {
+      "name": "zieng2-github-lite",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Адрес выведен по имени файла в репозитории, на странице не подтверждён.",
+      "location": "https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt"
+    },
+    {
+      "name": "zieng2-gitverse",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Указан вами. Экспериментальное зеркало автора; раннер GitHub (США) может не достучаться.",
+      "location": "https://gitverse.ru/api/repos/zieng2/wl/raw/branch/master/list_universal.txt"
+    },
+    {
+      "name": "zieng2-gitlab",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Зеркало автора.",
+      "location": "https://gitlab.com/zieng2/wl/raw/main/vless_universal.txt"
+    },
+    {
+      "name": "zieng2-codeberg",
+      "tags": [
+        "whitelist"
+      ],
+      "type": "url",
+      "trusted": false,
+      "enabled": true,
+      "note": "Зеркало автора.",
+      "location": "https://codeberg.org/zieng2/wl/raw/branch/main/vless_universal.txt"
     }
   ]
 }

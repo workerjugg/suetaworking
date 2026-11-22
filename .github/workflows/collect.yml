@@ -2,7 +2,7 @@ name: collect-and-publish
 
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 */6 * * *"      # каждые 6 часов; ~4 запуска/сутки, укладывается в бесплатные лимиты
   workflow_dispatch:
 
 permissions:
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     environment:
       name: github-pages
     steps:
@@ -28,7 +28,7 @@ jobs:
       - name: Tests
         run: python -m unittest discover -s tests
       - name: Install sing-box (official release)
-        continue-on-error: true
+        continue-on-error: true      # без sing-box работает только TCP-проверка
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: bash scripts/install_singbox.sh
@@ -42,8 +42,8 @@ jobs:
           restore-keys: state-
       - name: Collect, check, generate
         env:
-          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}   # необязательно
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}       # необязательно
         run: python main.py
       - name: Save last good state
         uses: actions/cache/save@v4
@@ -62,7 +62,7 @@ jobs:
         with:
           path: _site
       - uses: actions/deploy-pages@v4
-      - name: Alert on critical
+      - name: Alert on critical (GitHub emails you about a failed run)
         run: |
           python - <<'EOF'
           import json, sys

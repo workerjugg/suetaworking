@@ -21,10 +21,20 @@ from .parsers import b64decode_loose
 TRUST_TAG = {"TRUSTED": "TRUSTED", "VERIFIED": "VERIFIED", "PUBLIC": "PUBLIC"}
 
 
+def flag(cc: str) -> str:
+    """Флаг страны (эмодзи) — это и есть «иконка» сервера в клиентах."""
+    cc = (cc or "").upper()
+    if len(cc) != 2 or not cc.isalpha():
+        return "\U0001F3F3\ufe0f"
+    return "".join(chr(0x1F1E6 + ord(c) - 65) for c in cc)
+
+
 def label(n: Node) -> str:
     lat = n.best_latency
-    parts = [n.country or "ZZ", TRUST_TAG.get(n.trust, n.trust),
-             f"{int(lat)}ms" if lat is not None else "?ms"]
+    parts = [f"{flag(n.country)} {n.country or 'ZZ'}", TRUST_TAG.get(n.trust, n.trust)]
+    if "whitelist" in n.tags:
+        parts.append("WL")
+    parts.append(f"{int(lat)}ms" if lat is not None else "?ms")
     if n.speed_mbps:
         parts.append(f"{n.speed_mbps:g}Mbps")
     return " | ".join(parts)
