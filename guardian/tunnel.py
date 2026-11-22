@@ -13,12 +13,14 @@ from __future__ import annotations
 import ipaddress
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
 import tempfile
 import time
 import urllib.request
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -96,67 +98,85 @@ def _wait_port(port: int, proc, deadline: float) -> bool:
     return False
 
 
+DIAG: Counter = Counter()      # причины отказов тестов через туннель (для лога и stats.json)
+
+
+def _first_err(path: Path) -> str:
+    try:
+        txt = path.read_text(errors="replace").strip().splitlines()[0]
+    except Exception:
+        return "no_stderr"
+    return re.sub(r"[0-9a-fA-F\-]{8,}|\d+", "N", txt)[:140]
+
+
 def test_node(n: Node, binary: str, my_ip: str, with_speed: bool = False,
               tries: int = 2, timeout: float = 10) -> None:
     port = _free_port()
     cfg = build_test_config(n, port)
     if cfg is None:
         n.reject_reason = n.reject_reason or "unsupported_for_tunnel_test"
+        DIAG["unsupported_for_tunnel_test"] += 1
         return
     n.tunnel_attempts = tries
     n.tunnel_successes = 0
     with tempfile.TemporaryDirectory() as d:
-        path = Path(d) / "c.json"
+        path, errp = Path(d) / "c.json", Path(d) / "err.txt"
         path.write_text(json.dumps(cfg))
-        proc = subprocess.Popen([binary, "run", "-c", str(path)],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        try:
-            if not _wait_port(port, proc, time.time() + 6):
-                n.tunnel_ok = False
-                n.reject_reason = "singbox_start_failed"
-                return
-            lat = []
-            for _ in range(tries):
-                try:
-                    st, dt = None, 0.0
-                    for url in TEST_URLS:
-                        try:
-                            st, _, dt = _get(url, port, timeout)
-                            if st == 204:
-                                break
-                        except Exception:
-                            continue
-                    if st != 204:
-                        continue
-                    ip = _fetch_ip(port, timeout)      # вторично: нужен для геолокации и проверки «утечки»
-                    if ip and ip == my_ip:
-                        continue                       # трафик вышел напрямую — узел не считается
-                    n.tunnel_successes += 1
-                    if ip:
-                        n.exit_ip = ip
-                    lat.append(dt * 1000)
-                except Exception:
-                    continue
-            n.tunnel_ok = n.tunnel_successes >= 1
-            if lat:
-                n.tunnel_ms = round(min(lat), 1)
-            else:
-                n.reject_reason = "tunnel_failed"
-            if n.tunnel_ok and with_speed:
-                try:
-                    t0 = time.perf_counter()
-                    _, data, _ = _get(SPEED_URL, port, 20, max_bytes=2_000_000)
-                    dt = time.perf_counter() - t0
-                    if len(data) > 100_000 and dt > 0:
-                        n.speed_mbps = round(len(data) * 8 / dt / 1e6, 1)
-                except Exception:
-                    pass
-        finally:
-            proc.terminate()
+        with open(errp, "wb") as errf:
+            proc = subprocess.Popen([binary, "run", "-c", str(path)],
+                                    stdout=subprocess.DEVNULL, stderr=errf)
             try:
-                proc.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+                if not _wait_port(port, proc, time.time() + 6):
+                    n.tunnel_ok = False
+                    n.reject_reason = "singbox_start_failed"
+                    DIAG["start_failed: " + _first_err(errp)] += 1
+                    return
+                lat = []
+                for _ in range(tries):
+                    try:
+                        st, dt, last = None, 0.0, ""
+                        for url in TEST_URLS:
+                            try:
+                                st, _, dt = _get(url, port, timeout)
+                                if st == 204:
+                                    break
+                            except Exception as e:
+                                last = type(e).__name__
+                        if st != 204:
+                            DIAG["no_204: " + (last or str(st))] += 1
+                            continue
+                        ip = _fetch_ip(port, timeout)   # вторично: геолокация и проверка «утечки»
+                        if ip and ip == my_ip:
+                            DIAG["ip_leak"] += 1
+                            continue
+                        n.tunnel_successes += 1
+                        DIAG["ok"] += 1
+                        if ip:
+                            n.exit_ip = ip
+                        lat.append(dt * 1000)
+                    except Exception as e:
+                        DIAG["error: " + type(e).__name__] += 1
+                        continue
+                n.tunnel_ok = n.tunnel_successes >= 1
+                if lat:
+                    n.tunnel_ms = round(min(lat), 1)
+                else:
+                    n.reject_reason = "tunnel_failed"
+                if n.tunnel_ok and with_speed:
+                    try:
+                        t0 = time.perf_counter()
+                        _, data, _ = _get(SPEED_URL, port, 20, max_bytes=2_000_000)
+                        dt = time.perf_counter() - t0
+                        if len(data) > 100_000 and dt > 0:
+                            n.speed_mbps = round(len(data) * 8 / dt / 1e6, 1)
+                    except Exception:
+                        pass
+            finally:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
 
 
 def run_tunnel_tests(nodes: list[Node], binary: str, budget: int = 300, workers: int = 8,
@@ -178,4 +198,4 @@ def run_tunnel_tests(nodes: list[Node], binary: str, budget: int = 300, workers:
     with ThreadPoolExecutor(max_workers=workers) as ex:
         list(ex.map(job, enumerate(cands)))
     ok = sum(1 for n in cands if n.tunnel_ok)
-    return {"ran": True, "tested": len(cands), "passed": ok}
+    return {"ran": True, "tested": len(cands), "passed": ok, "diag": dict(DIAG.most_common(10))}

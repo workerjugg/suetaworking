@@ -14,7 +14,7 @@ def evaluate(prev: dict | None, cur: dict, min_alive: int) -> list[dict]:
                    f"{cur.get('alive', 0)} < {min_alive}. Прежняя подписка сохранена."})
     if prev and prev.get("alive") and cur.get("published"):
         if cur["alive"] < prev["alive"] * 0.5:
-            ev.append({"level": "critical", "text":
+            ev.append({"level": "warning", "text":
                        f"Число рабочих серверов упало: {prev['alive']} -> {cur['alive']}"})
     if prev and not prev.get("published") and cur.get("published"):
         ev.append({"level": "info", "text": f"Система восстановилась: рабочих серверов {cur['alive']}"})

@@ -20,6 +20,12 @@ def main() -> int:
     stats = run(cfg, Path(a.out), probe=not a.no_probe, data_dir=Path(a.data_dir),
                 use_tunnel=not a.no_tunnel, use_geo=not a.no_geo)
     print(json.dumps({k: stats[k] for k in ("found_raw", "unique", "alive", "published")}))
+    print("excluded:", json.dumps(stats.get("excluded"), ensure_ascii=False))
+    print("tunnel:", json.dumps(stats.get("tunnel"), ensure_ascii=False))
+    print("profiles:", json.dumps(stats.get("profiles")))
+    for name, s in (stats.get("sources") or {}).items():
+        print(f"source {name}: ok={s.get('ok')} parsed={s.get('parsed')} unique={s.get('unique')} "
+              f"alive={s.get('alive')} err={s.get('error', '')}")
     for e in stats.get("events", []):
         print(e["level"].upper(), e["text"])
     return 0  # недоступные источники не должны валить workflow; critical проверяет отдельный шаг

@@ -193,6 +193,8 @@ class FailoverTests(unittest.TestCase):
 class Notify(unittest.TestCase):
     def test_events(self):
         ev = notify.evaluate({"alive": 100, "published": True}, {"alive": 10, "published": True}, 5)
+        self.assertEqual(ev[0]["level"], "warning")          # падение — предупреждение, не «красный» запуск
+        ev = notify.evaluate({"alive": 100, "published": True}, {"alive": 0, "published": False}, 5)
         self.assertTrue(any(e["level"] == "critical" for e in ev))
         ev = notify.evaluate({"alive": 0, "published": False}, {"alive": 50, "published": True}, 5)
         self.assertEqual(ev[0]["level"], "info")
