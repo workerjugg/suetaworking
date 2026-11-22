@@ -6,6 +6,7 @@ import json
 import random
 import shutil
 import time
+import urllib.error
 import urllib.request
 from collections import Counter
 from datetime import datetime, timezone
@@ -23,9 +24,16 @@ def fetch_url(url: str, timeout: int = 30) -> str:
     берётся первые MAX_BYTES без оборванной последней строки."""
     if not url.startswith("https://"):
         raise ValueError("only https sources are allowed")
-    req = urllib.request.Request(url, headers={"User-Agent": "FreeVPN-Guardian/0.2"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = r.read(MAX_BYTES + 1)
+    def _open(ua):
+        req = urllib.request.Request(url, headers={"User-Agent": ua})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read(MAX_BYTES + 1)
+    try:
+        data = _open("FreeVPN-Guardian/0.2")
+    except urllib.error.HTTPError as e:
+        if e.code not in (403, 429):
+            raise
+        data = _open("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36")
     if len(data) > MAX_BYTES:
         data = data[:MAX_BYTES].rsplit(b"\n", 1)[0]
     return data.decode("utf-8", errors="replace")
@@ -53,7 +61,7 @@ def collect(sources: list[dict], delay: float = 1.0, retries: int = 2) -> tuple[
                 err = None
                 break
             except Exception as e:  # источник упал — остальные продолжают работать
-                err = type(e).__name__
+                err = type(e).__name__ + (f" {e.code}" if isinstance(e, urllib.error.HTTPError) else "")
                 time.sleep(2)
         if err:
             health[name] = {"ok": False, "error": err, "parsed": 0}

@@ -12,10 +12,10 @@
     "all_limit": 1500
   },
   "tunnel": {
-    "budget": 800,
-    "workers": 20,
-    "speed_top": 40,
-    "max_seconds": 2400
+    "budget": 2500,
+    "workers": 32,
+    "speed_top": 60,
+    "max_seconds": 2700
   },
   "sources": [
     {

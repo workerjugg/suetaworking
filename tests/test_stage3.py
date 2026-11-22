@@ -126,6 +126,34 @@ class Generators(unittest.TestCase):
         self.assertEqual(cfg["outbounds"][0]["tls"]["reality"]["public_key"], "FAKEKEY")
 
 
+class Robustness(unittest.TestCase):
+    def test_bad_fingerprint_and_vmess_security_are_normalized(self):
+        n = parse_line(f"vless://{U}@203.0.113.10:443?security=tls&sni=e.org&fp=unsafe")
+        self.assertEqual(generators.singbox_outbound(n)["tls"]["utls"]["fingerprint"], "chrome")
+        n = parse_line(f"vless://{U}@203.0.113.10:443?security=tls&sni=e.org&fp=Firefox")
+        self.assertEqual(generators.singbox_outbound(n)["tls"]["utls"]["fingerprint"], "firefox")
+        vm = parse_line("vmess://" + base64.b64encode(json.dumps(
+            {"add": "203.0.113.13", "port": "443", "id": U, "scy": "None2"}).encode()).decode())
+        self.assertEqual(generators.singbox_outbound(vm)["security"], "auto")
+
+    def test_http_403_retries_with_browser_ua(self):
+        import urllib.error
+        calls = []
+        class R:
+            def read(s, n): return b"vless://x"
+            def __enter__(s): return s
+            def __exit__(s, *a): pass
+        def fake_open(req, timeout=0):
+            calls.append(req.headers.get("User-agent"))
+            if len(calls) == 1:
+                raise urllib.error.HTTPError(req.full_url, 403, "forbidden", {}, None)
+            return R()
+        with mock.patch("urllib.request.urlopen", fake_open):
+            self.assertEqual(pipeline.fetch_url("https://example.com/x"), "vless://x")
+        self.assertEqual(len(calls), 2)
+        self.assertIn("Mozilla", calls[1])
+
+
 class Parsing(unittest.TestCase):
     def test_mixed_plain_and_nested_base64(self):
         inner = base64.b64encode(f"{T}\n".encode()).decode()

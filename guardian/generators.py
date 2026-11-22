@@ -78,12 +78,21 @@ def incy_subscription(nodes: list[Node], title: str = "FreeVPN Guardian",
     return "\n".join(head) + "\n" + uri_text(nodes) + "\n"
 
 
+UTLS_OK = {"chrome", "firefox", "edge", "safari", "360", "qq", "ios", "android", "random", "randomized"}
+VMESS_SEC = {"auto", "none", "zero", "aes-128-gcm", "chacha20-poly1305"}
+
+
+def _fp(p: dict) -> str:
+    fp = (p.get("fp") or "").lower()
+    return fp if fp in UTLS_OK else "chrome"      # неизвестное значение не должно ломать запуск sing-box
+
+
 def _tls_block(p: dict) -> dict | None:
     sec = p.get("security", "none")
     if sec == "none":
         return None
     tls = {"enabled": True, "server_name": p.get("sni", ""),
-           "utls": {"enabled": True, "fingerprint": p.get("fp") or "chrome"}}
+           "utls": {"enabled": True, "fingerprint": _fp(p)}}
     if sec == "reality":
         tls["reality"] = {"enabled": True, "public_key": p.get("pbk", ""),
                           "short_id": p.get("sid", "")}
@@ -122,7 +131,7 @@ def singbox_outbound(n: Node) -> dict | None:
             o["transport"] = tr
         return o
     if n.protocol == "vmess":
-        o = {"type": "vmess", "uuid": n.identity, "security": p.get("scy") or "auto",
+        o = {"type": "vmess", "uuid": n.identity, "security": (p.get("scy") or "auto").lower() if (p.get("scy") or "auto").lower() in VMESS_SEC else "auto",
              "alter_id": int(p.get("aid") or 0), **base}
         if p.get("tls") == "tls":
             o["tls"] = {"enabled": True, "server_name": p.get("sni") or p.get("host") or n.host,

@@ -110,7 +110,7 @@ def _first_err(path: Path) -> str:
 
 
 def test_node(n: Node, binary: str, my_ip: str, with_speed: bool = False,
-              tries: int = 2, timeout: float = 10) -> None:
+              tries: int = 2, timeout: float = 8) -> None:
     port = _free_port()
     cfg = build_test_config(n, port)
     if cfg is None:
