@@ -14,8 +14,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Published stats are fresh and sane
+        env:
+          SUB_TOKEN: ${{ secrets.SUB_TOKEN }}
         run: |
-          url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/subscriptions/stats.json"
+          url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/${SUB_TOKEN:+$SUB_TOKEN/}subscriptions/stats.json"
           curl -fsSL --retry 3 "$url" -o stats.json
           python3 - <<'EOF'
           import json, sys

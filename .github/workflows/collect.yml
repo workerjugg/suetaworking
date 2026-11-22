@@ -53,10 +53,19 @@ jobs:
             data
           key: state-${{ github.run_id }}
       - name: Prepare site
+        env:
+          SUB_TOKEN: ${{ secrets.SUB_TOKEN }}   # секретная папка; если не задан — сайт публичный в корне
         run: |
           mkdir -p _site
-          cp -r subscriptions _site/subscriptions 2>/dev/null || true
-          cp -r dashboard/* _site/
+          if [ -n "$SUB_TOKEN" ]; then
+            base="_site/$SUB_TOKEN"
+            mkdir -p "$base"
+            printf '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>404</title>Not found' > _site/index.html
+          else
+            base="_site"
+          fi
+          cp -r subscriptions "$base/subscriptions" 2>/dev/null || true
+          cp -r dashboard/* "$base/"
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
